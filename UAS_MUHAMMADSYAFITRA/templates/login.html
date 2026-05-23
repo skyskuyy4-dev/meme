@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UNIVERSITAS PAMULANG SIMM</title>
+    <!-- Menghubungkan ke file CSS bertema gelap -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div class="login-card">
+        <!-- Logo Bulat dengan Berlian Putih di Tengah -->
+        <div class="logo-container">
+            <div class="logo-diamond"></div>
+        </div>
+
+        <!-- Judul Halaman Sesuai Gambar 1 -->
+        <div class="title-univ">Universitas Pamulang</div>
+        <div class="title-simm">✦ SIMM ✦</div>
+        <div class="title-sub">Sistem Informasi Manajemen Mahasiswa</div>
+
+        <!-- Menampilkan Pesan Error Jika Login Gagal -->
+        {% if error %}
+            <div class="alert-error">{{ error }}</div>
+        {% endif %}
+
+        <!-- Form Input Data Akun -->
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <input type="text" name="username" class="input-field" placeholder="Username" required autocomplete="off">
+            </div>
+            
+            <div class="form-group">
+                <input type="password" name="password" class="input-field" placeholder="Password" required>
+            </div>
+
+            <button type="submit" class="btn-login">Login</button>
+        </form>
+
+        <!-- Tautan Navigasi Tambahan -->
+        <div class="footer-text">
+            Belum punya akun? <a href="#">Daftar di sini</a>
+        </div>
+    </div>
+
+</body>
+</html>

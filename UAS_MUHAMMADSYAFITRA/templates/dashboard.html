@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - UNIVERSITAS PAMULANG SIMM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="display: block; height: auto; background-color: #0f111a;">
+
+    <div class="dashboard-container">
+        
+        <!-- HEADER ATAS (Sesuai Gambar 2) -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <div class="logo-diamond" style="width: 10px; height: 10px;"></div>
+                </div>
+                <div class="header-title">
+                    <h1>✦ SIMM</h1>
+                    <p>Sistem Informasi Manajemen Mahasiswa - Universitas Pamulang</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="stat-brief">Total: <span>0</span></div>
+                <div class="stat-brief">Aktif: <span>0</span></div>
+                <div class="stat-brief">Rata IPK: <span>0</span></div>
+                <div class="user-badge">👤 {{ username }}</div>
+                <a href="/logout" class="btn-logout">Logout</a>
+            </div>
+        </header>
+
+        <!-- NAVIGASI MENU SEKUNDER -->
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active">📊 Dashboard</a>
+            <button class="nav-item">➕ Tambah</button>
+            <button class="nav-item">🗂️ Data</button>
+            <button class="nav-item">🔍 Cari</button>
+            <button class="nav-item">🔢 Urut</button>
+            <button class="nav-item">📁 File</button>
+        </nav>
+
+        <!-- KOTAK INDIKATOR / RINGKASAN DATA STATISTIK -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Mahasiswa</div>
+                <div class="stat-value value-blue">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Mahasiswa Aktif</div>
+                <div class="stat-value value-green">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Rata-rata IPK</div>
+                <div class="stat-value value-orange">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">IPK Tertinggi</div>
+                <div class="stat-value value-yellow">0.00</div>
+            </div>
+        </section>
+
+        <!-- PANEL TABEL DATA MAHASISWA -->
+        <main class="data-panel">
+            <div class="panel-title">📋 Mahasiswa Terbaru</div>
+            <table class="main-table">
+                <thead>
+                    <tr>
+                        <th>NIM</th>
+                        <th>Nama</th>
+                        <th>Prodi</th>
+                        <th>IPK</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Kondisi awal data kosong sesuai Gambar 2 -->
+                    <tr>
+                        <td colspan="5" class="empty-row">Belum ada data</td>
+                    </tr>
+                </tbody>
+            </table>
+        </main>
+
+        <!-- TOMBOL AKSI BAWAH -->
+        <div class="action-area">
+            <button class="btn-primary">➕ Tambah Mahasiswa</button>
+            <button class="btn-secondary">📄 Generate Contoh</button>
+        </div>
+
+    </div>
+
+</body>
+</html>
