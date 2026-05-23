@@ -1,9 +1,10 @@
 import re
 import time
 import sqlite3
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+
+app = Flask(__name__)
+app.secret_key = "kunci_rahasia_simm_unpam_muhammadsyafitra"
 
 # =========================================================================
 # 1. KONSEP OOP (CLASS, ENKAPSULASI, PEWARISAN, POLIMORFISME)
@@ -62,7 +63,7 @@ def init_db():
         conn.commit()
         conn.close()
     except Exception as e:
-        st.error(f"Gagal inisialisasi database: {e}")
+        print(f"Gagal inisialisasi database: {e}")
 
 def get_db_connection():
     try:
@@ -70,7 +71,7 @@ def get_db_connection():
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
-        st.error(f"Error Database I/O: {e}")
+        print(f"Error Database I/O: {e}")
         return None
 
 def fetch_all_mahasiswa_objects():
@@ -146,384 +147,169 @@ def binary_search_nim(arr, target_nim):
     return []
 
 # =========================================================================
-# 4. FUNGSI UTAMA APLIKASI STREAMLIT
+# 4. API ENDPOINTS (PROSES AJAX & VALIDASI REGEX)
 # =========================================================================
 
-def show_login():
-    """Halaman Login"""
-    st.markdown("""
-        <h1 style='text-align: center; color: #2c3e50;'>📚 SIMM UNPAM</h1>
-        <h3 style='text-align: center; color: #555;'>Sistem Informasi Manajemen Mahasiswa</h3>
-        <p style='text-align: center; color: #777;'>UAS - MUHAMMAD SYAFITRA</p>
-        <hr>
-    """, unsafe_allow_html=True)
+@app.route('/api/mahasiswa', methods=['GET'])
+def api_get_mahasiswa():
+    daftar_obj = fetch_all_mahasiswa_objects()
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("### 🔐 Login Aplikasi")
-        username = st.text_input("Username", placeholder="Masukkan username")
-        password = st.text_input("Password", type="password", placeholder="Masukkan password")
-        
-        if st.button("Login", type="primary", use_container_width=True):
-            if username == "fitra" and password == "12345":
-                st.session_state['user'] = username
-                st.session_state['logged_in'] = True
-                st.rerun()
-            else:
-                st.error("❌ Username atau Password salah!")
-        
-        st.markdown("---")
-        st.caption("💡 *Demo Login: username 'fitra', password '12345'*")
-
-def show_dashboard():
-    """Halaman Dashboard Utama"""
-    st.markdown("""
-        <h1 style='text-align: center; color: #2c3e50;'>📊 SIMM UNPAM</h1>
-        <p style='text-align: center; color: #555;'>Sistem Informasi Manajemen Mahasiswa</p>
-        <hr>
-    """, unsafe_allow_html=True)
-    
-    # Sidebar
-    with st.sidebar:
-        st.image("https://img.icons8.com/color/96/graduation-cap.png", width=80)
-        st.markdown(f"### 👋 Selamat Datang, **{st.session_state['user']}**!")
-        st.markdown("---")
-        
-        menu = st.radio(
-            "📌 **Menu Navigasi**",
-            ["🏠 Dashboard", "📋 Data Mahasiswa", "➕ Tambah Data", "🔍 Cari Data", "📈 Statistik", "⚙️ Generate Data", "🚪 Logout"]
-        )
-        
-        st.markdown("---")
-        st.caption(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Routing Menu
-    if menu == "🏠 Dashboard":
-        show_dashboard_home()
-    elif menu == "📋 Data Mahasiswa":
-        show_data_mahasiswa()
-    elif menu == "➕ Tambah Data":
-        show_tambah_data()
-    elif menu == "🔍 Cari Data":
-        show_cari_data()
-    elif menu == "📈 Statistik":
-        show_statistik()
-    elif menu == "⚙️ Generate Data":
-        show_generate_data()
-    elif menu == "🚪 Logout":
-        st.session_state.clear()
-        st.rerun()
-
-def show_dashboard_home():
-    """Halaman Home Dashboard"""
-    st.markdown("## 🏠 Dashboard Overview")
-    
-    daftar_mhs = fetch_all_mahasiswa_objects()
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    total = len(daftar_mhs)
-    aktif = sum(1 for mhs in daftar_mhs if mhs.status.lower() == "aktif")
-    avg_ipk = sum(mhs.ipk for mhs in daftar_mhs) / total if total > 0 else 0
-    max_ipk = max((mhs.ipk for mhs in daftar_mhs), default=0.0)
-    
-    with col1:
-        st.metric("📊 Total Mahasiswa", total)
-    with col2:
-        st.metric("✅ Mahasiswa Aktif", aktif)
-    with col3:
-        st.metric("⭐ Rata-rata IPK", f"{avg_ipk:.2f}")
-    with col4:
-        st.metric("🏆 IPK Tertinggi", f"{max_ipk:.2f}")
-    
-    st.markdown("---")
-    st.markdown("### 📌 Informasi Aplikasi")
-    st.info("""
-    **SIMM UNPAM** adalah aplikasi manajemen data mahasiswa yang dibangun dengan:
-    - 🐍 Python & Streamlit
-    - 🗄️ SQLite Database
-    - 📊 Implementasi Algoritma Sorting & Searching
-    - 🧬 Konsep OOP (Enkapsulasi, Pewarisan, Polimorfisme)
-    """)
-    
-    if total > 0:
-        st.markdown("### 📋 5 Data Terbaru")
-        df = pd.DataFrame([mhs.to_dict() for mhs in daftar_mhs[:5]])
-        st.dataframe(df, use_container_width=True, hide_index=True)
-
-def show_data_mahasiswa():
-    """Menampilkan data mahasiswa dengan fitur sorting"""
-    st.markdown("## 📋 Data Mahasiswa")
-    
-    daftar_mhs = fetch_all_mahasiswa_objects()
-    
-    if not daftar_mhs:
-        st.warning("⚠️ Belum ada data mahasiswa. Silakan tambah data atau generate data contoh!")
-        return
-    
-    # Sorting options
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        sort_option = st.selectbox(
-            "Urutkan berdasarkan:",
-            ["Tanpa Urutan", "IPK Tertinggi", "IPK Terendah", "NIM A-Z"]
-        )
+    search_type = request.args.get('search_type')
+    keyword = request.args.get('keyword')
+    sort_by = request.args.get('sort_by')
     
     start_time = time.time()
     complexity_info = "O(1)"
     
-    if sort_option == "IPK Tertinggi":
-        daftar_mhs = bubble_sort_ipk(daftar_mhs.copy(), "desc")
-        complexity_info = "O(n²) - Bubble Sort (Descending IPK)"
-    elif sort_option == "IPK Terendah":
-        daftar_mhs = bubble_sort_ipk(daftar_mhs.copy(), "asc")
-        complexity_info = "O(n²) - Bubble Sort (Ascending IPK)"
-    elif sort_option == "NIM A-Z":
-        daftar_mhs = merge_sort_nim(daftar_mhs.copy())
-        complexity_info = "O(n log n) - Merge Sort"
-    
+    if keyword:
+        if search_type == "nim":
+            daftar_obj = binary_search_nim(daftar_obj, keyword)
+            complexity_info = "O(log n) [Binary Search]"
+        else:
+            daftar_obj = linear_search_nama(daftar_obj, keyword)
+            complexity_info = "O(n) [Linear Search]"
+            
+    if sort_by == "ipk_desc":
+        daftar_obj = bubble_sort_ipk(daftar_obj, "desc")
+        complexity_info += " + O(n^2) [Bubble Sort]"
+    elif sort_by == "ipk_asc":
+        daftar_obj = bubble_sort_ipk(daftar_obj, "asc")
+        complexity_info += " + O(n^2) [Bubble Sort]"
+    elif sort_by == "nim_asc":
+        daftar_obj = merge_sort_nim(daftar_obj)
+        complexity_info += " + O(n log n) [Merge Sort]"
+
     execution_time = (time.time() - start_time) * 1000
     
-    # Display data
-    df = pd.DataFrame([mhs.to_dict() for mhs in daftar_mhs])
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    total = len(daftar_obj)
+    aktif = sum(1 for mhs in daftar_obj if mhs.status.lower() == "aktif")
+    avg_ipk = sum(mhs.ipk for mhs in daftar_obj) / total if total > 0 else 0
+    max_ipk = max((mhs.ipk for mhs in daftar_obj), default=0.0)
     
-    # Performance info
-    with st.expander("⚡ Informasi Performa"):
-        st.info(f"""
-        - ⏱️ Waktu Eksekusi: `{execution_time:.4f} ms`
-        - 📊 Kompleksitas: `{complexity_info}`
-        - 📦 Jumlah Data: `{len(daftar_mhs)}`
-        """)
-    
-    # Delete functionality
-    st.markdown("### 🗑️ Hapus Data")
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        nim_to_delete = st.selectbox("Pilih NIM untuk dihapus:", [""] + [mhs.nim for mhs in daftar_mhs])
-    with col2:
-        if st.button("Hapus Data", type="secondary"):
-            if nim_to_delete:
-                try:
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("DELETE FROM mahasiswa WHERE nim = ?", (nim_to_delete,))
-                    conn.commit()
-                    conn.close()
-                    st.success(f"✅ Data dengan NIM {nim_to_delete} berhasil dihapus!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Gagal menghapus: {e}")
-            else:
-                st.warning("⚠️ Pilih NIM terlebih dahulu!")
+    return jsonify({
+        "data": [mhs.to_dict() for mhs in daftar_obj],
+        "stats": {
+            "total": total,
+            "aktif": aktif,
+            "avg_ipk": round(avg_ipk, 2),
+            "max_ipk": round(max_ipk, 2)
+        },
+        "performance": {
+            "time_ms": round(execution_time, 4),
+            "complexity": complexity_info
+        }
+    })
 
-def show_tambah_data():
-    """Form untuk menambah data mahasiswa"""
-    st.markdown("## ➕ Tambah Data Mahasiswa")
-    
-    with st.form("form_tambah_data", clear_on_submit=True):
-        nim = st.text_input("NIM *", placeholder="Contoh: 2020114001 (10-12 digit angka)")
-        nama = st.text_input("Nama Lengkap *", placeholder="Contoh: Muhammad Syafitra")
-        prodi = st.selectbox("Program Studi *", ["Teknik Informatika", "Sistem Informasi", "Manajemen", "Akuntansi", "Teknik Komputer"])
-        ipk = st.number_input("IPK *", min_value=0.0, max_value=4.0, step=0.01, format="%.2f")
-        status = st.selectbox("Status", ["Aktif", "Cuti", "Pasif", "Lulus"])
-        
-        submitted = st.form_submit_button("💾 Simpan Data", type="primary", use_container_width=True)
-        
-        if submitted:
-            # Validasi Regex
-            errors = []
-            if not re.match(r"^\d{10,12}$", nim):
-                errors.append("NIM harus berupa angka 10-12 digit!")
-            if not re.match(r"^[a-zA-Z\s\.]{3,50}$", nama):
-                errors.append("Nama hanya boleh huruf dan spasi, minimal 3 karakter!")
-            
-            if errors:
-                for error in errors:
-                    st.error(f"❌ {error}")
-            else:
-                try:
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "INSERT INTO mahasiswa (nim, nama, prodi, ipk, status) VALUES (?, ?, ?, ?, ?)",
-                        (nim, nama, prodi, float(ipk), status)
-                    )
-                    conn.commit()
-                    conn.close()
-                    st.success("✅ Data mahasiswa berhasil disimpan!")
-                    st.balloons()
-                except sqlite3.IntegrityError:
-                    st.error("❌ NIM sudah terdaftar di sistem!")
+@app.route('/api/mahasiswa/tambah', methods=['POST'])
+def api_tambah_mahasiswa():
+    try:
+        data = request.json
+        nim = data.get('nim', '').strip()
+        nama = data.get('nama', '').strip()
+        prodi = data.get('prodi', '').strip()
+        ipk = data.get('ipk', '').strip()
+        status = data.get('status', 'Aktif')
 
-def show_cari_data():
-    """Fitur pencarian data mahasiswa"""
-    st.markdown("## 🔍 Cari Data Mahasiswa")
-    
-    daftar_mhs = fetch_all_mahasiswa_objects()
-    
-    if not daftar_mhs:
-        st.warning("⚠️ Belum ada data mahasiswa.")
-        return
-    
-    search_type = st.radio("Tipe Pencarian:", ["Nama", "NIM"], horizontal=True)
-    keyword = st.text_input("Masukkan kata kunci:", placeholder="Ketik di sini...")
-    
-    if keyword:
-        start_time = time.time()
-        
-        if search_type == "Nama":
-            hasil = linear_search_nama(daftar_mhs, keyword)
-            complexity = "O(n) - Linear Search"
-            st.info(f"🔍 Mencari nama mengandung: **{keyword}**")
-        else:
-            if re.match(r"^\d+$", keyword):
-                hasil = binary_search_nim(daftar_mhs, keyword)
-                complexity = "O(log n) - Binary Search"
-                st.info(f"🔍 Mencari NIM: **{keyword}**")
-            else:
-                hasil = []
-                st.warning("⚠️ NIM harus berupa angka!")
-        
-        execution_time = (time.time() - start_time) * 1000
-        
-        if hasil:
-            st.success(f"✅ Ditemukan {len(hasil)} data")
-            df = pd.DataFrame([mhs.to_dict() for mhs in hasil])
-            st.dataframe(df, use_container_width=True, hide_index=True)
-            
-            with st.expander("⚡ Informasi Performa"):
-                st.info(f"""
-                - ⏱️ Waktu Pencarian: `{execution_time:.4f} ms`
-                - 📊 Kompleksitas Algoritma: `{complexity}`
-                - 🎯 Data Ditemukan: `{len(hasil)}`
-                """)
-        else:
-            st.warning("😔 Data tidak ditemukan!")
+        # VALIDASI REGEX
+        if not re.match(r"^\d{10,12}\$", nim):
+            return jsonify({"status": "error", "message": "Regex Fail: NIM harus berupa angka 10-12 digit!"}), 400
+        if not re.match(r"^[a-zA-Z\s\.]{3,50}\$", nama):
+            return jsonify({"status": "error", "message": "Regex Fail: Nama hanya boleh huruf, minimal 3 karakter!"}), 400
+        if not re.match(r"^(0(\.\d{1,2})?|[1-3](\.\d{1,2})?|4(\.0{1,2})?)\$", str(ipk)):
+            return jsonify({"status": "error", "message": "Regex Fail: IPK harus angka desimal antara 0.00 - 4.00!"}), 400
 
-def show_statistik():
-    """Menampilkan statistik data"""
-    st.markdown("## 📈 Statistik Mahasiswa")
-    
-    daftar_mhs = fetch_all_mahasiswa_objects()
-    
-    if not daftar_mhs:
-        st.warning("⚠️ Belum ada data mahasiswa.")
-        return
-    
-    # Konversi ke DataFrame
-    df = pd.DataFrame([mhs.to_dict() for mhs in daftar_mhs])
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("### 📊 Distribusi Program Studi")
-        prodi_counts = df['prodi'].value_counts()
-        st.bar_chart(prodi_counts)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO mahasiswa (nim, nama, prodi, ipk, status) VALUES (?, ?, ?, ?, ?)",
+                       (nim, nama, prodi, float(ipk), status))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success", "message": "Data berhasil disimpan!"})
         
-    with col2:
-        st.markdown("### 📊 Distribusi Status")
-        status_counts = df['status'].value_counts()
-        st.bar_chart(status_counts)
-    
-    st.markdown("---")
-    st.markdown("### 📋 Ringkasan Statistik")
-    
-    stats = {
-        "Total Mahasiswa": len(df),
-        "Mahasiswa Aktif": len(df[df['status'] == 'Aktif']),
-        "Rata-rata IPK": f"{df['ipk'].mean():.2f}",
-        "Median IPK": f"{df['ipk'].median():.2f}",
-        "IPK Tertinggi": f"{df['ipk'].max():.2f}",
-        "IPK Terendah": f"{df['ipk'].min():.2f}",
-        "Std Dev IPK": f"{df['ipk'].std():.2f}"
-    }
-    
-    stats_df = pd.DataFrame([stats]).T
-    stats_df.columns = ["Nilai"]
-    st.dataframe(stats_df, use_container_width=True)
-    
-    # Histogram IPK
-    st.markdown("### 📊 Distribusi IPK")
-    st.bar_chart(df['ipk'].value_counts().sort_index())
+    except sqlite3.IntegrityError:
+        return jsonify({"status": "error", "message": "NIM sudah terdaftar di sistem!"}), 400
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Terjadi kesalahan sistem: {str(e)}"}), 500
 
-def show_generate_data():
-    """Generate data contoh"""
-    st.markdown("## ⚙️ Generate Data Contoh")
-    
-    st.warning("⚠️ Fungsi ini akan menambahkan 5 data contoh ke database (tanpa menghapus data yang sudah ada)")
-    
+@app.route('/api/mahasiswa/generate', methods=['POST'])
+def api_generate_contoh():
     sample_data = [
-        ("2020114001", "Muhammad Fitra", "Teknik Informatika", 3.85, "Aktif"),
-        ("2020114005", "Siti Aminah", "Sistem Informasi", 3.40, "Aktif"),
-        ("2020114002", "Andi Wijaya", "Teknik Informatika", 2.90, "Cuti"),
-        ("2020114012", "Riska Amelia", "Manajemen", 4.00, "Aktif"),
-        ("2020114009", "Budi Santoso", "Akuntansi", 3.15, "Pasif")
+        ("2010114001", "Muhammad Fitra", "Teknik Informatika", 3.85, "Aktif"),
+        ("2010114005", "Siti Aminah", "Sistem Informasi", 3.40, "Aktif"),
+        ("2010114002", "Andi Wijaya", "Teknik Informatika", 2.90, "Cuti"),
+        ("2010114012", "Riska Amelia", "Manajemen", 4.00, "Aktif"),
+        ("2010114009", "Budi Santoso", "Akuntansi", 3.15, "Pasif")
     ]
-    
-    if st.button("🎲 Generate Data Contoh", type="primary"):
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            inserted = 0
-            for data in sample_data:
-                try:
-                    cursor.execute(
-                        "INSERT OR IGNORE INTO mahasiswa (nim, nama, prodi, ipk, status) VALUES (?, ?, ?, ?, ?)",
-                        data
-                    )
-                    if cursor.rowcount > 0:
-                        inserted += 1
-                except:
-                    pass
-            conn.commit()
-            conn.close()
-            st.success(f"✅ Berhasil menambahkan {inserted} data baru!")
-            st.balloons()
-        except Exception as e:
-            st.error(f"❌ Gagal generate data: {e}")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.executemany("INSERT OR IGNORE INTO mahasiswa (nim, nama, prodi, ipk, status) VALUES (?, ?, ?, ?, ?)", sample_data)
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success", "message": "5 Data simulasi berhasil digenerate!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/mahasiswa/hapus/<nim>', methods=['DELETE'])
+def api_hapus_mahasiswa(nim):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM mahasiswa WHERE nim = ?", (nim,))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success", "message": "Data mahasiswa berhasil dihapus!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # =========================================================================
-# 5. MAIN APP
+# 5. INTERNAL ROUTING HALAMAN HTML
 # =========================================================================
 
-def main():
-    # Konfigurasi halaman
-    st.set_page_config(
-        page_title="SIMM UNPAM - Sistem Informasi Mahasiswa",
-        page_icon="📚",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
-    # Custom CSS
-    st.markdown("""
-        <style>
-        .stApp {
-            background-color: #f5f7fb;
-        }
-        .stButton > button {
-            border-radius: 8px;
-            font-weight: 500;
-        }
-        .stDataFrame {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    # Inisialisasi database
-    init_db()
-    
-    # Cek status login
-    if 'logged_in' not in st.session_state:
-        st.session_state['logged_in'] = False
-    
-    if st.session_state['logged_in']:
-        show_dashboard()
-    else:
-        show_login()
+@app.route('/')
+def index():
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error_msg = None
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username == "fitra" and password == "12345":
+            session['user'] = username
+            return redirect(url_for('dashboard'))
+        else:
+            error_msg = "Username atau Password salah!"
+            
+    return render_template('login.html', error=error_msg)
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_template('dashboard.html', username=session['user'])
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('login'))
+
+# =========================================================================
+# 6. BLOK EKSEKUSI UTAMA (RUNNER & ERROR HANDLING GLOBAL)
+# =========================================================================
 
 if __name__ == '__main__':
-    main()
+    try:
+        print("="*60)
+        print(" SIMM UNPAM - APLIKASI DATA MAHASISWA BERBASIS PYTHON")
+        print(" UAS - MUHAMMADSYAFITRA")
+        print(" STATUS SERVER: AKTIF")
+        print("="*60)
+        
+        init_db()
+        app.run(host='0.0.0.0', port=5000, debug=True)
+        
+    except Exception as server_error:
+        print(f" Gagal menyalakan server Flask: {str(server_error)}")
